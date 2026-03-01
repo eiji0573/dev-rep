@@ -15,6 +15,7 @@ from data.base_fetcher import BaseFetcher
 from data.yfinance_fetcher import YfinanceFetcher
 from scheduler.job import SurgeScanner, create_scanner_from_config
 from ui.chart import render_chart
+from ui.utils import get_company_name
 from ui.watchlist import render_watchlist
 
 # ロガー設定（ライブラリモジュールのため basicConfig は呼ばない）
@@ -147,6 +148,25 @@ def _render_scanner_controls() -> None:
 
 
 # ----------------------------------------------------------------
+# サイドバー: 監視銘柄サマリー
+# ----------------------------------------------------------------
+
+def _render_watchlist_summary() -> None:
+    """サイドバーにスキャン対象の監視銘柄一覧を常時表示する。"""
+    tickers: list[str] = st.session_state.get("watchlist_tickers", [])
+
+    st.divider()
+    st.subheader(f"📋 監視銘柄（{len(tickers)}件）")
+
+    if not tickers:
+        st.caption("銘柄未登録 — 「👀 監視銘柄管理」から追加してください。")
+    else:
+        for t in tickers:
+            name = get_company_name(t)
+            st.caption(f"・**{t}** {name}")
+
+
+# ----------------------------------------------------------------
 # スキャン結果表示
 # ----------------------------------------------------------------
 
@@ -221,9 +241,10 @@ def main() -> None:
     # --- スキャナー初期化（セッション初回のみ） ---
     _init_scanner()
 
-    # --- サイドバー: スキャナーコントロール ---
+    # --- サイドバー: スキャナーコントロール & 監視銘柄サマリー ---
     with st.sidebar:
         _render_scanner_controls()
+        _render_watchlist_summary()
 
     # --- ページルーティング ---
     if page == "📊 チャート分析":
