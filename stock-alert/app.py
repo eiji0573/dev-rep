@@ -90,13 +90,7 @@ def _inject_cancel_label() -> None:
 
 
 def _inject_sidebar_hide() -> None:
-    """
-    サイドバーを非表示にし、タブ以前のヘッダー行を固定する CSS を注入する。
-
-    レイアウト方針:
-      section.main のスクロールを止め、block-container → 外側 stVerticalBlock →
-      stTabs をフレックスコラムとして高さを継承させ、stTabContent のみスクロール。
-    """
+    """サイドバーを非表示にし、余白・見出しサイズを縮小する CSS を注入する。"""
     st.markdown(
         """
         <style>
@@ -105,51 +99,13 @@ def _inject_sidebar_hide() -> None:
         button[data-testid="stSidebarCollapseButton"]  { display: none !important; }
         [data-testid="collapsedControl"]               { display: none !important; }
 
-        /* ===== ページ全体のスクロールを止める ===== */
-        section.main {
-            overflow: hidden !important;
-            height: 100vh !important;
-        }
-
-        /* ===== block-container をフレックスコラムに ===== */
+        /* ===== block-container の余白縮小 ===== */
         .block-container {
             padding-top: 0.8rem !important;
             padding-left: 1rem !important;
             padding-right: 1rem !important;
             padding-bottom: 0 !important;
             max-width: 100% !important;
-            height: 100% !important;
-            box-sizing: border-box !important;
-            overflow: hidden !important;
-            display: flex !important;
-            flex-direction: column !important;
-        }
-
-        /* ===== 外側 stVerticalBlock（block-container 直下）をフレックスコラムに ===== */
-        .block-container > div[data-testid="stVerticalBlock"] {
-            flex: 1 !important;
-            min-height: 0 !important;
-            overflow: hidden !important;
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 0.3rem !important;
-        }
-
-        /* ===== タブコンテナが残りスペースをすべて占有 ===== */
-        div[data-testid="stTabs"] {
-            flex: 1 !important;
-            min-height: 0 !important;
-            overflow: hidden !important;
-            display: flex !important;
-            flex-direction: column !important;
-        }
-
-        /* ===== タブコンテンツのみスクロール ===== */
-        div[data-testid="stTabContent"] {
-            flex: 1 !important;
-            min-height: 0 !important;
-            overflow-y: auto !important;
-            padding-bottom: 3.5rem !important;  /* 固定ボトムバー(32px) + バッファ */
         }
 
         /* ===== 見出しサイズ縮小 ===== */
@@ -162,6 +118,75 @@ def _inject_sidebar_hide() -> None:
         </style>
         """,
         unsafe_allow_html=True,
+    )
+
+
+def _inject_tab_scroll_fix() -> None:
+    """
+    タブコンテンツの高さを JS で計測・設定し、そこだけスクロール可能にする。
+
+    CSS flex チェーンの代わりに JS で stTabContent の top 座標を計測して
+    利用可能な高さを動的に計算する。<head> に <style> タグを注入するため
+    Streamlit の React 再レンダリングをまたいでも設定が保持される。
+    """
+    components.html(
+        """
+        <script>
+        (function() {
+            var parentDoc = window.parent.document;
+            var STYLE_ID  = 'surge-tab-scroll-style';
+
+            function setTabStyle(css) {
+                var el = parentDoc.getElementById(STYLE_ID);
+                if (!el) {
+                    el = parentDoc.createElement('style');
+                    el.id = STYLE_ID;
+                    parentDoc.head.appendChild(el);
+                }
+                el.textContent = css;
+            }
+
+            function adjustTabContent() {
+                var tabContent = parentDoc.querySelector('div[data-testid="stTabContent"]');
+                var availHeight;
+                if (tabContent) {
+                    var rect = tabContent.getBoundingClientRect();
+                    availHeight = window.parent.innerHeight - rect.top - 40;
+                    if (availHeight < 100) return;  // sanity check
+                } else {
+                    // フォールバック: 固定値
+                    availHeight = window.parent.innerHeight - 210;
+                }
+                setTabStyle(
+                    'div[data-testid="stTabContent"] {' +
+                    '  height: ' + availHeight + 'px !important;' +
+                    '  overflow-y: auto !important;' +
+                    '  padding-bottom: 3.5rem !important;' +
+                    '  box-sizing: border-box !important;' +
+                    '}'
+                );
+            }
+
+            // 初回実行（少し遅らせて DOM 確定後に計測）
+            setTimeout(adjustTabContent, 150);
+
+            // Streamlit 再レンダリング後も維持（デバウンス付き）
+            var timer = null;
+            var obs = new MutationObserver(function() {
+                clearTimeout(timer);
+                timer = setTimeout(adjustTabContent, 150);
+            });
+            obs.observe(parentDoc.body, { childList: true, subtree: false });
+
+            // ウィンドウリサイズ時も再計算
+            window.parent.addEventListener('resize', function() {
+                clearTimeout(timer);
+                timer = setTimeout(adjustTabContent, 150);
+            });
+        })();
+        </script>
+        """,
+        height=0,
     )
 
 
@@ -322,6 +347,7 @@ def main() -> None:
     # --- CSS/JS インジェクション ---
     _inject_cancel_label()
     _inject_sidebar_hide()
+    _inject_tab_scroll_fix()
 
     # --- フェッチャー・スキャナー初期化 ---
     fetcher = get_fetcher()
