@@ -1,0 +1,24 @@
+# データ取得
+yfinance>=0.2.37
+
+# データ処理
+pandas>=2.0.0
+numpy>=1.24.0
+
+# テクニカル指標
+pandas_ta>=0.3.14b0
+
+# チャート描画
+plotly>=5.18.0
+
+# フロントエンド
+streamlit>=1.31.0
+
+# スケジューラ
+APScheduler>=3.10.0
+
+# LINE Messaging API
+line-bot-sdk>=3.5.0
+
+# 環境変数
+python-dotenv>=1.0.0
