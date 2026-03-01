@@ -90,13 +90,26 @@ def _inject_cancel_label() -> None:
 
 
 def _inject_sidebar_hide() -> None:
-    """左サイドバーおよびトグルボタンを非表示にする CSS を注入する。"""
+    """左サイドバーを非表示にし、全体の余白をコンパクトにする CSS を注入する。"""
     st.markdown(
         """
         <style>
-        section[data-testid="stSidebar"]            { display: none !important; }
-        button[data-testid="stSidebarCollapseButton"] { display: none !important; }
-        [data-testid="collapsedControl"]             { display: none !important; }
+        /* サイドバー非表示 */
+        section[data-testid="stSidebar"]              { display: none !important; }
+        button[data-testid="stSidebarCollapseButton"]  { display: none !important; }
+        [data-testid="collapsedControl"]               { display: none !important; }
+
+        /* 全体余白を縮小 */
+        .block-container {
+            padding-top: 0.8rem !important;
+            padding-bottom: 0.5rem !important;
+        }
+        /* 要素間の縦隙間を縮小 */
+        div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
+            gap: 0.3rem !important;
+        }
+        /* divider の余白を縮小 */
+        hr { margin: 0.4rem 0 !important; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -203,10 +216,14 @@ def _render_scanner_controls_compact() -> None:
                 st.rerun()
 
     with col_status:
-        if is_running:
-            st.success("🟢 スキャン中")
-        else:
-            st.info("⚪ 停止中")
+        bg    = "#1a472a" if is_running else "#2c2c2c"
+        label = "🟢 スキャン中" if is_running else "⚪ 停止中"
+        st.markdown(
+            f'<div style="display:flex;align-items:center;height:38px;'
+            f'padding:0 14px;border-radius:6px;background:{bg};'
+            f'color:#eeeeee;font-size:14px;white-space:nowrap">{label}</div>',
+            unsafe_allow_html=True,
+        )
 
 
 # ----------------------------------------------------------------
