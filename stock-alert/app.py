@@ -99,11 +99,20 @@ def _inject_sidebar_hide() -> None:
         button[data-testid="stSidebarCollapseButton"]  { display: none !important; }
         [data-testid="collapsedControl"]               { display: none !important; }
 
-        /* 全体余白を縮小 */
+        /* 両横余白・上下余白の縮小 / スクロール確保 */
         .block-container {
             padding-top: 0.8rem !important;
-            padding-bottom: 0.5rem !important;
+            padding-bottom: 3.5rem !important;  /* 固定ボトムバー(32px) + バッファ */
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+            max-width: 100% !important;
         }
+
+        /* 見出しサイズ縮小 */
+        h2 { font-size: 1.4rem !important; }
+        h4 { font-size: 1.0rem !important; }
+        h5 { font-size: 0.9rem !important; }
+
         /* 要素間の縦隙間を縮小 */
         div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
             gap: 0.3rem !important;
@@ -155,12 +164,6 @@ def _inject_status_bar(
                         'z-index:9999', 'font-family:sans-serif'
                     ].join(';');
                     doc.body.appendChild(bar);
-                    if (!doc.getElementById('surge-pb-style')) {{
-                        var s = doc.createElement('style');
-                        s.id = 'surge-pb-style';
-                        s.textContent = 'section.main > div {{ padding-bottom: 48px !important; }}';
-                        doc.head.appendChild(s);
-                    }}
                 }}
                 // 毎回テキストと背景色を更新
                 bar.innerHTML = TEXT;
@@ -186,7 +189,7 @@ def _render_scanner_controls_compact() -> None:
     scanner: SurgeScanner | None = st.session_state.get("scanner")
     is_running: bool = st.session_state.get("scanner_running", False)
 
-    col_btn, col_status, _col_spacer = st.columns([1, 2, 5])
+    col_btn, col_status, _col_spacer = st.columns([1, 1.2, 6])
 
     with col_btn:
         if scanner is None:
@@ -219,9 +222,9 @@ def _render_scanner_controls_compact() -> None:
         bg    = "#1a472a" if is_running else "#2c2c2c"
         label = "🟢 スキャン中" if is_running else "⚪ 停止中"
         st.markdown(
-            f'<div style="display:flex;align-items:center;height:38px;'
+            f'<div style="display:inline-flex;align-items:center;height:38px;'
             f'padding:0 14px;border-radius:6px;background:{bg};'
-            f'color:#eeeeee;font-size:14px;white-space:nowrap">{label}</div>',
+            f'color:#eeeeee;font-size:14px;white-space:nowrap;width:fit-content">{label}</div>',
             unsafe_allow_html=True,
         )
 

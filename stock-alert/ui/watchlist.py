@@ -97,7 +97,7 @@ def _render_add_ticker_section() -> None:
     """銘柄コード入力と追加ボタンを表示する。"""
     with st.container(border=True):
         st.markdown("#### 銘柄を追加")
-        col_input, col_btn = st.columns([0.8, 0.2])
+        col_input, col_btn, _col_space = st.columns([0.25, 0.08, 0.67])
         with col_input:
             raw = st.text_input(
                 "銘柄コード（4桁の数字）",
