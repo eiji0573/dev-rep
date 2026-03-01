@@ -212,6 +212,8 @@ def render_chart(ticker: str, fetcher: BaseFetcher) -> None:
                 mode="lines", name="出来高SMA 20",
                 line=dict(color="purple", width=1),
             ), row=vol_row, col=1)
+        # Y軸を整数カンマ区切りで明示（省略表記の文字化け防止）
+        fig.update_yaxes(tickformat=",.0f", row=vol_row, col=1)
 
     # --- レイアウト設定 ---
     fig.update_layout(
