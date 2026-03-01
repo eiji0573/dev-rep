@@ -10,6 +10,7 @@ import streamlit as st
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import config
+from ui.utils import get_company_name
 
 # --- Session State 初期化ヘルパー ---
 def _init_session_state() -> None:
@@ -91,7 +92,7 @@ def render_watchlist() -> list[dict[str, Any]]:
         for ticker in st.session_state.watchlist_tickers:
             thresholds = st.session_state.watchlist_thresholds.get(ticker, _default_threshold())
 
-            with st.expander(f"📌 {ticker}", expanded=False):
+            with st.expander(f"📌 {ticker}　{get_company_name(ticker)}", expanded=False):
                 col_title, col_del = st.columns([0.85, 0.15])
                 with col_del:
                     if st.button("🗑️ 削除", key=f"del_{ticker}", type="secondary"):

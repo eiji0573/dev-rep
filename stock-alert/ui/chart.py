@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from data.base_fetcher import BaseFetcher, Timeframe
 from analysis.indicators import add_technical_indicators
+from ui.utils import get_company_name
 
 # 15分未満の足種（yfinance制限対象）
 LIMITED_TIMEFRAMES = {Timeframe.SECOND, Timeframe.MINUTE_1, Timeframe.MINUTE_5, Timeframe.MINUTE_10}
@@ -31,7 +32,7 @@ def render_chart(ticker: str, fetcher: BaseFetcher) -> None:
         ticker: 銘柄コード（例: "7203"）
         fetcher: データ取得インスタンス
     """
-    st.header(f"📊 {ticker} 株価チャート")
+    st.header(f"📊 {ticker}　{get_company_name(ticker)}")
 
     # --- Session State 初期化 ---
     if "chart_timeframe" not in st.session_state:

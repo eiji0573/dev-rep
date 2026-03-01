@@ -4,6 +4,7 @@ import os
 import sys
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 # プロジェクトルートをパスに追加
 sys.path.insert(0, os.path.dirname(__file__))
@@ -18,6 +19,44 @@ from ui.watchlist import render_watchlist
 
 # ロガー設定（ライブラリモジュールのため basicConfig は呼ばない）
 logger = logging.getLogger(__name__)
+
+
+# ----------------------------------------------------------------
+# UI ユーティリティ
+# ----------------------------------------------------------------
+
+def _inject_cancel_label() -> None:
+    """
+    Streamlit 組み込みの「やめて」停止ボタンのラベルを「キャンセル」に置換する。
+
+    st.components.v1.html() で親フレームに JS を注入し、
+    MutationObserver でボタンテキストを監視・書き換える。
+    height=0 で表示領域を占有しない。
+    """
+    components.html(
+        """
+        <script>
+        (function () {
+            function replaceLabel() {
+                var buttons = window.parent.document.querySelectorAll("button");
+                buttons.forEach(function (btn) {
+                    if (btn.textContent.trim() === "やめて") {
+                        btn.textContent = "キャンセル";
+                    }
+                });
+            }
+            replaceLabel();
+            var observer = new MutationObserver(replaceLabel);
+            observer.observe(window.parent.document.body, {
+                childList: true,
+                subtree: true,
+                characterData: true,
+            });
+        })();
+        </script>
+        """,
+        height=0,
+    )
 
 
 # ----------------------------------------------------------------
@@ -153,6 +192,9 @@ def main() -> None:
         page_icon="📈",
         layout="wide",
     )
+
+    # 「やめて」ボタンを「キャンセル」に書き換え
+    _inject_cancel_label()
 
     # --- サイドバー（ページ選択・データソース表示） ---
     with st.sidebar:
