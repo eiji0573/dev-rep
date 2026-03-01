@@ -67,8 +67,14 @@ def detect_golden_cross(df: pd.DataFrame, short_col: str = "SMA_5", long_col: st
     if short_col not in df.columns or long_col not in df.columns:
         return pd.Series(False, index=df.index)
 
+    # pandas_ta がデータ不足時に None を返す場合があるため numeric に統一する
+    short_series = pd.to_numeric(df[short_col], errors="coerce")
+    long_series  = pd.to_numeric(df[long_col],  errors="coerce")
+
     # 前の足では短期 < 長期、現在の足では短期 > 長期
-    prev_short = df[short_col].shift(1)
-    prev_long = df[long_col].shift(1)
-    golden_cross = (prev_short <= prev_long) & (df[short_col] > df[long_col])
-    return golden_cross
+    prev_short = short_series.shift(1)
+    prev_long  = long_series.shift(1)
+    golden_cross = (prev_short <= prev_long) & (short_series > long_series)
+
+    # NaN が混入した場合は False として扱う
+    return golden_cross.fillna(False)
