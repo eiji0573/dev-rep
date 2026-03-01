@@ -184,12 +184,12 @@ def _inject_status_bar(
 # コンパクトスキャナーコントロール（タブ上部）
 # ----------------------------------------------------------------
 
-def _render_scanner_controls_compact() -> None:
+def _render_scanner_controls_compact(monitored_count: int = 0) -> None:
     """タブ上部にコンパクトなスキャナーコントロールを横並びで表示する。"""
     scanner: SurgeScanner | None = st.session_state.get("scanner")
     is_running: bool = st.session_state.get("scanner_running", False)
 
-    col_btn, col_status, _col_spacer = st.columns([1, 1.2, 6])
+    col_btn, col_status, _col_spacer = st.columns([0.6, 0.8, 7], gap="small")
 
     with col_btn:
         if scanner is None:
@@ -206,14 +206,20 @@ def _render_scanner_controls_compact() -> None:
                 st.rerun()
         else:
             if st.button("▶ 開始", type="primary", key="scanner_start"):
-                try:
-                    scanner.start()
-                    st.session_state.scanner_running = True
-                    logger.info("SurgeScanner を開始しました。")
-                except Exception as e:
-                    logger.error(f"SurgeScanner の開始に失敗: {e}", exc_info=True)
-                    st.error("スキャナーの開始に失敗しました。")
-                st.rerun()
+                if monitored_count == 0:
+                    st.toast(
+                        "監視対象が 0 件です。監視銘柄管理タブで銘柄を登録・有効化してください。",
+                        icon="⚠️",
+                    )
+                else:
+                    try:
+                        scanner.start()
+                        st.session_state.scanner_running = True
+                        logger.info("SurgeScanner を開始しました。")
+                    except Exception as e:
+                        logger.error(f"SurgeScanner の開始に失敗: {e}", exc_info=True)
+                        st.error("スキャナーの開始に失敗しました。")
+                    st.rerun()
 
     with col_status:
         bg    = "#1a472a" if is_running else "#2c2c2c"
@@ -294,7 +300,7 @@ def main() -> None:
     st.markdown("## 📈 株価監視・急騰通知アプリ")
 
     # --- コンパクトスキャナーコントロール ---
-    _render_scanner_controls_compact()
+    _render_scanner_controls_compact(monitored_count)
 
     st.divider()
 
