@@ -216,10 +216,10 @@ def _render_surge_results(results: list[SurgeResult]) -> None:
         st.info("急騰銘柄は見つかりませんでした。")
         return
 
-    st.subheader(f"🚨 急騰検知: {len(results)} 銘柄")
+    st.markdown(f"#### 🚨 急騰検知: {len(results)} 銘柄")
     for r in results:
         with st.container(border=True):
-            st.subheader(f"【急騰】{r.ticker}")
+            st.markdown(f"##### 【急騰】{r.ticker}")
 
             # 4列メトリクス表示
             col1, col2, col3, col4 = st.columns(4)
@@ -289,7 +289,7 @@ def main() -> None:
         st.divider()
 
         # --- 手動スキャン ---
-        st.subheader("🔍 今すぐスキャン")
+        st.markdown("#### 🔍 今すぐスキャン")
         if not watchlist:
             st.warning("監視銘柄を登録してからスキャンを実行してください。")
         else:

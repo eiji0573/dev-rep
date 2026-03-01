@@ -96,7 +96,7 @@ def _remove_ticker(ticker: str) -> None:
 def _render_add_ticker_section() -> None:
     """銘柄コード入力と追加ボタンを表示する。"""
     with st.container(border=True):
-        st.subheader("銘柄を追加")
+        st.markdown("#### 銘柄を追加")
         col_input, col_btn = st.columns([0.8, 0.2])
         with col_input:
             raw = st.text_input(
@@ -336,7 +336,7 @@ def render_watchlist() -> list[dict[str, Any]]:
     settings_map: dict[str, dict] = st.session_state.watchlist_settings
     total = len(settings_map)
     enabled_count = sum(1 for s in settings_map.values() if s["enabled"])
-    st.subheader(f"登録済み銘柄（{total} 件 / 監視中 {enabled_count} 件）")
+    st.markdown(f"#### 登録済み銘柄（{total} 件 / 監視中 {enabled_count} 件）")
 
     if not settings_map:
         st.info("銘柄が未登録です。上の入力欄から追加してください。")
