@@ -193,11 +193,9 @@ def _render_scanner_controls_compact() -> None:
 
     with col_btn:
         if scanner is None:
-            st.button("スキャナーエラー", disabled=True, key="scanner_err",
-                      use_container_width=True)
+            st.button("スキャナーエラー", disabled=True, key="scanner_err")
         elif is_running:
-            if st.button("⏹ 停止", type="secondary", key="scanner_stop",
-                         use_container_width=True):
+            if st.button("⏹ 停止", type="secondary", key="scanner_stop"):
                 try:
                     scanner.stop()
                     st.session_state.scanner_running = False
@@ -207,8 +205,7 @@ def _render_scanner_controls_compact() -> None:
                     st.error("スキャナーの停止に失敗しました。")
                 st.rerun()
         else:
-            if st.button("▶ 開始", type="primary", key="scanner_start",
-                         use_container_width=True):
+            if st.button("▶ 開始", type="primary", key="scanner_start"):
                 try:
                     scanner.start()
                     st.session_state.scanner_running = True
