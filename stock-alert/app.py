@@ -90,34 +90,74 @@ def _inject_cancel_label() -> None:
 
 
 def _inject_sidebar_hide() -> None:
-    """左サイドバーを非表示にし、全体の余白をコンパクトにする CSS を注入する。"""
+    """
+    サイドバーを非表示にし、タブ以前のヘッダー行を固定する CSS を注入する。
+
+    レイアウト方針:
+      section.main のスクロールを止め、block-container → 外側 stVerticalBlock →
+      stTabs をフレックスコラムとして高さを継承させ、stTabContent のみスクロール。
+    """
     st.markdown(
         """
         <style>
-        /* サイドバー非表示 */
+        /* ===== サイドバー非表示 ===== */
         section[data-testid="stSidebar"]              { display: none !important; }
         button[data-testid="stSidebarCollapseButton"]  { display: none !important; }
         [data-testid="collapsedControl"]               { display: none !important; }
 
-        /* 両横余白・上下余白の縮小 / スクロール確保 */
-        .block-container {
-            padding-top: 0.8rem !important;
-            padding-bottom: 3.5rem !important;  /* 固定ボトムバー(32px) + バッファ */
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
-            max-width: 100% !important;
+        /* ===== ページ全体のスクロールを止める ===== */
+        section.main {
+            overflow: hidden !important;
+            height: 100vh !important;
         }
 
-        /* 見出しサイズ縮小 */
+        /* ===== block-container をフレックスコラムに ===== */
+        .block-container {
+            padding-top: 0.8rem !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+            padding-bottom: 0 !important;
+            max-width: 100% !important;
+            height: 100% !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+        /* ===== 外側 stVerticalBlock（block-container 直下）をフレックスコラムに ===== */
+        .block-container > div[data-testid="stVerticalBlock"] {
+            flex: 1 !important;
+            min-height: 0 !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.3rem !important;
+        }
+
+        /* ===== タブコンテナが残りスペースをすべて占有 ===== */
+        div[data-testid="stTabs"] {
+            flex: 1 !important;
+            min-height: 0 !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+        /* ===== タブコンテンツのみスクロール ===== */
+        div[data-testid="stTabContent"] {
+            flex: 1 !important;
+            min-height: 0 !important;
+            overflow-y: auto !important;
+            padding-bottom: 3.5rem !important;  /* 固定ボトムバー(32px) + バッファ */
+        }
+
+        /* ===== 見出しサイズ縮小 ===== */
         h2 { font-size: 1.4rem !important; }
         h4 { font-size: 1.0rem !important; }
         h5 { font-size: 0.9rem !important; }
 
-        /* 要素間の縦隙間を縮小 */
-        div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
-            gap: 0.3rem !important;
-        }
-        /* divider の余白を縮小 */
+        /* ===== divider の余白を縮小 ===== */
         hr { margin: 0.4rem 0 !important; }
         </style>
         """,
