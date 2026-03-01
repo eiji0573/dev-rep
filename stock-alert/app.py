@@ -177,9 +177,11 @@ def _render_scanner_controls_compact() -> None:
 
     with col_btn:
         if scanner is None:
-            st.button("スキャナーエラー", disabled=True, key="scanner_err")
+            st.button("スキャナーエラー", disabled=True, key="scanner_err",
+                      use_container_width=True)
         elif is_running:
-            if st.button("⏹ 停止", type="secondary", key="scanner_stop"):
+            if st.button("⏹ 停止", type="secondary", key="scanner_stop",
+                         use_container_width=True):
                 try:
                     scanner.stop()
                     st.session_state.scanner_running = False
@@ -189,7 +191,8 @@ def _render_scanner_controls_compact() -> None:
                     st.error("スキャナーの停止に失敗しました。")
                 st.rerun()
         else:
-            if st.button("▶ 開始", type="primary", key="scanner_start"):
+            if st.button("▶ 開始", type="primary", key="scanner_start",
+                         use_container_width=True):
                 try:
                     scanner.start()
                     st.session_state.scanner_running = True
@@ -269,6 +272,9 @@ def main() -> None:
 
     # --- 固定ボトムバー注入 ---
     _inject_status_bar(is_running, monitored_count, total_count)
+
+    # --- ページタイトル ---
+    st.markdown("## 📈 株価監視・急騰通知アプリ")
 
     # --- コンパクトスキャナーコントロール ---
     _render_scanner_controls_compact()
