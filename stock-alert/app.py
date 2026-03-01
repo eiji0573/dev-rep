@@ -4,6 +4,7 @@ import os
 import sys
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 # プロジェクトルートをパスに追加
 sys.path.insert(0, os.path.dirname(__file__))
@@ -13,7 +14,6 @@ from analysis.detector import SurgeResult, scan_watchlist
 from data.base_fetcher import BaseFetcher
 from data.yfinance_fetcher import YfinanceFetcher
 from scheduler.job import SurgeScanner, create_scanner_from_config
-from ui.chart import render_chart
 from ui.watchlist import render_watchlist
 
 # ロガー設定（ライブラリモジュールのため basicConfig は呼ばない）
@@ -42,7 +42,7 @@ def get_fetcher() -> BaseFetcher:
 def _init_scanner() -> None:
     """
     セッション初回のみ SurgeScanner を session_state に初期化する。
-    失敗時は scanner=None とし、エ外は raise しない。
+    失敗時は scanner=None とし、例外は raise しない。
     """
     if "scanner" in st.session_state:
         return
@@ -60,51 +60,150 @@ def _init_scanner() -> None:
 
 
 # ----------------------------------------------------------------
-# サイドバー: スキャナーコントロール
+# CSS / JS インジェクション
 # ----------------------------------------------------------------
 
-def _render_scanner_controls() -> None:
-    """サイドバーに場中スキャンのコントロール UI を表示する。"""
-    st.divider()
-    st.subheader("🔍 場中スキャン")
+def _inject_cancel_label() -> None:
+    """「やめて」ボタンのラベルを「キャンセル」に置換する。"""
+    components.html(
+        """
+        <script>
+        (function () {
+            function replaceLabel() {
+                var buttons = window.parent.document.querySelectorAll("button");
+                buttons.forEach(function (btn) {
+                    if (btn.textContent.trim() === "やめて") {
+                        btn.textContent = "キャンセル";
+                    }
+                });
+            }
+            replaceLabel();
+            var observer = new MutationObserver(replaceLabel);
+            observer.observe(window.parent.document.body, {
+                childList: true, subtree: true, characterData: true,
+            });
+        })();
+        </script>
+        """,
+        height=0,
+    )
 
+
+def _inject_sidebar_hide() -> None:
+    """左サイドバーおよびトグルボタンを非表示にする CSS を注入する。"""
+    st.markdown(
+        """
+        <style>
+        section[data-testid="stSidebar"]            { display: none !important; }
+        button[data-testid="stSidebarCollapseButton"] { display: none !important; }
+        [data-testid="collapsedControl"]             { display: none !important; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _inject_status_bar(
+    is_running: bool,
+    monitored_count: int,
+    total_count: int,
+) -> None:
+    """
+    画面下部に固定ステータスバーを JS で注入する。
+    MutationObserver により Streamlit の再レンダリング後も生存する。
+    状態が変わるたびに innerHTML / background を更新する。
+    """
+    status_icon = "🟢 スキャン中" if is_running else "⚪ 停止中"
+    bar_color   = "#1a472a"       if is_running else "#2c2c2c"
+    bar_text = (
+        f"{status_icon} &nbsp;|&nbsp; "
+        f"間隔: {config.SCAN_INTERVAL_MINUTES}分 &nbsp;|&nbsp; "
+        f"取引時間: {config.TRADING_START_TIME}〜{config.TRADING_END_TIME} &nbsp;|&nbsp; "
+        f"監視: {monitored_count} / {total_count} 件"
+    )
+
+    components.html(
+        f"""
+        <script>
+        (function () {{
+            var TEXT  = '{bar_text}';
+            var COLOR = '{bar_color}';
+
+            function ensureBar() {{
+                var doc = window.parent.document;
+                var bar = doc.getElementById('surge-status-bar');
+                if (!bar) {{
+                    bar = doc.createElement('div');
+                    bar.id = 'surge-status-bar';
+                    bar.style.cssText = [
+                        'position:fixed', 'bottom:0', 'left:0', 'right:0',
+                        'height:32px', 'color:#eeeeee', 'font-size:13px',
+                        'display:flex', 'align-items:center', 'padding:0 16px',
+                        'z-index:9999', 'font-family:sans-serif'
+                    ].join(';');
+                    doc.body.appendChild(bar);
+                    if (!doc.getElementById('surge-pb-style')) {{
+                        var s = doc.createElement('style');
+                        s.id = 'surge-pb-style';
+                        s.textContent = 'section.main > div {{ padding-bottom: 48px !important; }}';
+                        doc.head.appendChild(s);
+                    }}
+                }}
+                // 毎回テキストと背景色を更新
+                bar.innerHTML = TEXT;
+                bar.style.background = COLOR;
+            }}
+
+            ensureBar();
+            var obs = new MutationObserver(ensureBar);
+            obs.observe(window.parent.document.body, {{ childList: true, subtree: false }});
+        }})();
+        </script>
+        """,
+        height=0,
+    )
+
+
+# ----------------------------------------------------------------
+# コンパクトスキャナーコントロール（タブ上部）
+# ----------------------------------------------------------------
+
+def _render_scanner_controls_compact() -> None:
+    """タブ上部にコンパクトなスキャナーコントロールを横並びで表示する。"""
     scanner: SurgeScanner | None = st.session_state.get("scanner")
-
-    # スキャナー初期化エラー時
-    if scanner is None:
-        st.error("スキャナーの初期化に失敗しました。設定を確認してください。")
-        return
-
     is_running: bool = st.session_state.get("scanner_running", False)
 
-    # 状態表示
-    if is_running:
-        st.success("🟢 スキャン中")
-        if st.button("⏹ スキャン停止", use_container_width=True, type="secondary"):
-            try:
-                scanner.stop()
-                st.session_state.scanner_running = False
-                logger.info("SurgeScanner を停止しました。")
-            except Exception as e:
-                logger.error(f"SurgeScanner の停止に失敗: {e}", exc_info=True)
-                st.error("スキャナーの停止に失敗しました。")
-            st.rerun()
-    else:
-        st.info("⚪ 停止中")
-        if st.button("▶ スキャン開始", use_container_width=True, type="primary"):
-            try:
-                scanner.start()
-                st.session_state.scanner_running = True
-                logger.info("SurgeScanner を開始しました。")
-            except Exception as e:
-                logger.error(f"SurgeScanner の開始に失敗: {e}", exc_info=True)
-                st.error("スキャナーの開始に失敗しました。")
-            st.rerun()
+    col_btn, col_status, _col_spacer = st.columns([1, 2, 5])
 
-    st.caption(
-        f"間隔: **{config.SCAN_INTERVAL_MINUTES}分** / "
-        f"{config.TRADING_START_TIME}〜{config.TRADING_END_TIME}"
-    )
+    with col_btn:
+        if scanner is None:
+            st.button("スキャナーエラー", disabled=True, key="scanner_err")
+        elif is_running:
+            if st.button("⏹ 停止", type="secondary", key="scanner_stop"):
+                try:
+                    scanner.stop()
+                    st.session_state.scanner_running = False
+                    logger.info("SurgeScanner を停止しました。")
+                except Exception as e:
+                    logger.error(f"SurgeScanner の停止に失敗: {e}", exc_info=True)
+                    st.error("スキャナーの停止に失敗しました。")
+                st.rerun()
+        else:
+            if st.button("▶ 開始", type="primary", key="scanner_start"):
+                try:
+                    scanner.start()
+                    st.session_state.scanner_running = True
+                    logger.info("SurgeScanner を開始しました。")
+                except Exception as e:
+                    logger.error(f"SurgeScanner の開始に失敗: {e}", exc_info=True)
+                    st.error("スキャナーの開始に失敗しました。")
+                st.rerun()
+
+    with col_status:
+        if is_running:
+            st.success("🟢 スキャン中")
+        else:
+            st.info("⚪ 停止中")
 
 
 # ----------------------------------------------------------------
@@ -154,52 +253,35 @@ def main() -> None:
         layout="wide",
     )
 
-    # --- サイドバー（ページ選択・データソース表示） ---
-    with st.sidebar:
-        st.title("📈 株価監視アプリ")
-        st.divider()
+    # --- CSS/JS インジェクション ---
+    _inject_cancel_label()
+    _inject_sidebar_hide()
 
-        page = st.radio(
-            "ページ選択",
-            ["📊 チャート分析", "👀 監視銘柄管理"],
-            label_visibility="collapsed",
-        )
-
-        st.divider()
-
-        source_label = {
-            "yfinance": "yfinance（15分遅延）",
-            "kabucom":  "auカブコム証券API",
-        }.get(config.DATA_SOURCE, config.DATA_SOURCE)
-        st.caption(f"📡 データソース: **{source_label}**")
-
-    # --- フェッチャー生成 ---
+    # --- フェッチャー・スキャナー初期化 ---
     fetcher = get_fetcher()
-
-    # --- スキャナー初期化（セッション初回のみ） ---
     _init_scanner()
 
-    # --- サイドバー: スキャナーコントロール ---
-    with st.sidebar:
-        _render_scanner_controls()
+    # --- ステータスバー用件数を取得（watchlist_settings は初期化済み前提） ---
+    settings_map: dict = st.session_state.get("watchlist_settings", {})
+    total_count     = len(settings_map)
+    monitored_count = sum(1 for s in settings_map.values() if s.get("enabled", True))
+    is_running      = st.session_state.get("scanner_running", False)
 
-    # --- ページルーティング ---
-    if page == "📊 チャート分析":
-        ticker = st.sidebar.text_input(
-            "銘柄コード（4桁）",
-            value="7203",
-            max_chars=4,
-            placeholder="例: 7203",
-        )
-        if ticker:
-            render_chart(ticker, fetcher)
-        else:
-            st.info("サイドバーから銘柄コードを入力してください。")
+    # --- 固定ボトムバー注入 ---
+    _inject_status_bar(is_running, monitored_count, total_count)
 
-    elif page == "👀 監視銘柄管理":
+    # --- コンパクトスキャナーコントロール ---
+    _render_scanner_controls_compact()
+
+    st.divider()
+
+    # --- タブ構成 ---
+    tabs = st.tabs(["👀 監視銘柄管理"])
+
+    with tabs[0]:
         watchlist = render_watchlist()
 
-        # スキャナーのウォッチリストを最新状態に同期
+        # スキャナーのウォッチリストを最新状態に同期（enabled=True のみ）
         scanner: SurgeScanner | None = st.session_state.get("scanner")
         if scanner is not None:
             scanner.update_watchlist(watchlist)
