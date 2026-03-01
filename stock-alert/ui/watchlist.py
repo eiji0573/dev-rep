@@ -120,43 +120,43 @@ def _render_add_ticker_section() -> None:
 # ----------------------------------------------------------------
 
 def _render_bulk_action_bar() -> None:
-    """選択銘柄がある場合のみ一括操作バーを表示する。"""
+    """一括操作バーを常時表示する。未選択時はボタンを無効化。"""
     selected: set[str] = st.session_state.watchlist_selected
-    if not selected:
-        return
-
     n = len(selected)
+    has_selection = n > 0
+
     with st.container(border=True):
         col_label, col_on, col_off, col_del, col_clear = st.columns([2, 1, 1, 1, 1])
 
         rerun_needed = False
 
         with col_label:
-            st.markdown(f"**{n} 件選択中**")
+            st.markdown(f"**{n} 件選択中**" if has_selection else "**（未選択）**")
 
         with col_on:
-            if st.button("一括ON", key="bulk_on"):
+            if st.button("一括ON", key="bulk_on", disabled=not has_selection):
                 for t in selected:
                     if t in st.session_state.watchlist_settings:
                         st.session_state.watchlist_settings[t]["enabled"] = True
                 rerun_needed = True
 
         with col_off:
-            if st.button("一括OFF", key="bulk_off"):
+            if st.button("一括OFF", key="bulk_off", disabled=not has_selection):
                 for t in selected:
                     if t in st.session_state.watchlist_settings:
                         st.session_state.watchlist_settings[t]["enabled"] = False
                 rerun_needed = True
 
         with col_del:
-            if st.button("一括削除", key="bulk_del", type="secondary"):
+            if st.button("一括削除", key="bulk_del", type="secondary",
+                         disabled=not has_selection):
                 for t in list(selected):
                     st.session_state.watchlist_settings.pop(t, None)
                 st.session_state.watchlist_selected.clear()
                 rerun_needed = True
 
         with col_clear:
-            if st.button("選択解除", key="bulk_clear"):
+            if st.button("選択解除", key="bulk_clear", disabled=not has_selection):
                 st.session_state.watchlist_selected.clear()
                 rerun_needed = True
 
@@ -335,7 +335,12 @@ def render_watchlist() -> list[dict[str, Any]]:
 
     settings_map: dict[str, dict] = st.session_state.watchlist_settings
     total = len(settings_map)
-    enabled_count = sum(1 for s in settings_map.values() if s["enabled"])
+    # トグルの現在値を st.session_state のウィジェットキーから直接読む
+    # （カード描画前に settings["enabled"] を参照すると 1 フレーム遅れるため）
+    enabled_count = sum(
+        1 for t, s in settings_map.items()
+        if st.session_state.get(f"enabled_{t}", s["enabled"])
+    )
     st.markdown(f"#### 登録済み銘柄（{total} 件 / 監視中 {enabled_count} 件）")
 
     if not settings_map:
