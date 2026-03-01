@@ -212,7 +212,9 @@ def _render_stock_card(ticker: str, settings: dict) -> None:
     with st.container(border=True):
 
         # --- ヘッダー行 ---
-        c_chk, c_tog, c_name, c_badge, c_link, c_del = st.columns([0.5, 0.7, 3.5, 1.2, 1.0, 0.8])
+        c_chk, c_tog, c_name, c_badge, c_link, c_del = st.columns(
+            [0.5, 0.7, 3.5, 1.2, 1.0, 0.8], vertical_alignment="center"
+        )
 
         with c_chk:
             is_selected = ticker in st.session_state.watchlist_selected
